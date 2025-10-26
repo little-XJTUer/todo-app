@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # MySQL数据库
   mysql:
     image: mysql:8.0
     container_name: todo-mysql
@@ -10,42 +11,43 @@ services:
       MYSQL_USER: todo_user
       MYSQL_PASSWORD: todo_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command:
       - --default-authentication-plugin=mysql_native_password
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    networks:
-      - todo-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      timeout: 20s
+      timeout: 30s
       retries: 10
 
+  # Spring Boot后端
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: todo-backend-mysql
+    container_name: todo-backend
     environment:
-      JDBC_DATABASE_URL: jdbc:mysql://mysql:3306/todo_db
-      JDBC_DATABASE_USERNAME: todo_user
-      JDBC_DATABASE_PASSWORD: todo_pass
-      SPRING_PROFILES_ACTIVE: cloud
+      - SPRING_PROFILES_ACTIVE=cloud
+      - DATABASE_URL=jdbc:mysql://mysql:3306/todo_db?useSSL=false&serverTimezone=UTC
+      - DATABASE_USERNAME=todo_user
+      - DATABASE_PASSWORD=todo_pass
     ports:
       - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
-    networks:
-      - todo-network
-    restart: unless-stopped
+
+  # Vue.js前端
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: todo-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
 
 volumes:
   mysql_data:
-
-networks:
-  todo-network:
-    driver: bridge

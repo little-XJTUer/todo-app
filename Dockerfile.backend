@@ -1,21 +1,11 @@
-# 后端Dockerfile
 FROM maven:3.8-openjdk-17 AS build
 WORKDIR /app
-COPY . .
+COPY pom.xml .
+COPY src ./src
 RUN mvn clean package -DskipTests
 
 FROM openjdk:17-slim
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-
-# 安装curl用于健康检查
-RUN apk add --no-cache curl
-
 EXPOSE 8080
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/api/todos || exit 1
-
-# 默认使用cloud配置，可以通过环境变量覆盖
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=cloud"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
